@@ -100,7 +100,11 @@ class Feedbag
 		rescue OpenURI::HTTPError => the_error
 			$stderr.puts "Error ocurred with `#{url}': #{the_error}"
 			f = the_error.io
-			body = f.string
+			if f.class.method_defined? :string
+				body = f.string
+			else
+				body = f.read
+			end
 			# response html may have a link to feed
 		rescue Timeout::Error => err
 			$stderr.puts "Timeout error ocurred with `#{url}: #{err}'"
