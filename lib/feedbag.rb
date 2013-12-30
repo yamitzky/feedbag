@@ -95,7 +95,24 @@ class Feedbag
 	  end
 
 		begin
-			html = open(url) do |f|
+          f = open(url)
+          body = f.read
+		rescue OpenURI::HTTPError => the_error
+			$stderr.puts "Error ocurred with `#{url}': #{the_error}"
+			f = the_error.io
+			body = f.string
+			# response html may have a link to feed
+		rescue Timeout::Error => err
+			$stderr.puts "Timeout error ocurred with `#{url}: #{err}'"
+			return @feeds
+		rescue SocketError => err
+			$stderr.puts "Socket error ocurred with: `#{url}': #{err}"
+			return @feeds
+		rescue => ex
+			$stderr.puts "#{ex.class} error ocurred with: `#{url}': #{ex.message}"
+			return @feeds
+		end
+
 				content_type = f.content_type.downcase
 				if content_type == "application/octet-stream" # open failed
 				  content_type = f.meta["content-type"].gsub(/;.*$/, '')
@@ -104,7 +121,7 @@ class Feedbag
 					return self.add_feed(url, nil)
 				end
 
-				doc = Nokogiri::HTML(f.read)
+				doc = Nokogiri::HTML(body)
 
 				if doc.at("base") and doc.at("base")["href"]
 					@base_uri = doc.at("base")["href"]
@@ -145,19 +162,8 @@ class Feedbag
         if url.match(/.xml$/) and doc.root and doc.root["xml:base"] and doc.root["xml:base"].strip == url.strip
 					self.add_feed(url, nil)
         end
-			end
-		rescue Timeout::Error => err
-			$stderr.puts "Timeout error ocurred with `#{url}: #{err}'"
-		rescue OpenURI::HTTPError => the_error
-			$stderr.puts "Error ocurred with `#{url}': #{the_error}"
-		rescue SocketError => err
-			$stderr.puts "Socket error ocurred with: `#{url}': #{err}"
-		rescue => ex
-			$stderr.puts "#{ex.class} error ocurred with: `#{url}': #{ex.message}"
-		ensure
-			return @feeds
-		end
 		
+		return @feeds
 	end
 
 	def looks_like_feed?(url)
